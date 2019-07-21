@@ -20,24 +20,33 @@ import com.google.cloud.translate.Translation;
 
 //before using the program, a google cloud private key file need to be download from google. 
 public class DocumentTranslater {
+	private String fPath;
 	
-	public static void main(String[] args) {
+	//Constructor
+	public DocumentTranslater(String fp) {
+		fPath = fp;
+	}
+	
+	//return total time used
+	public int processing() {
 		
 		long startTime = System.currentTimeMillis();
 		
 		//ask for file name
+		/*
 		Scanner sc = new Scanner(System.in);
-		System.out.println("Enter the file name: ");
+		System.out.println("Enter the file full path: ");
 		String fileName = sc.nextLine();
 		sc.close();
+		*/
 		
 		try {
-			if (fileName.substring(fileName.length()-3).equals("doc"))
-				ProcessDoc(fileName);
-			else if(fileName.substring(fileName.length()-4).equals("docx"))
-				ProcessDocx(fileName);
+			if (fPath.substring(fPath.length()-3).equals("doc"))
+				ProcessDoc(fPath);
+			else if(fPath.substring(fPath.length()-4).equals("docx"))
+				ProcessDocx(fPath);
 			else
-				ProcessDir(fileName);
+				ProcessDir(fPath);
 		} catch (IOException ex) {
 			System.err.println("Caught IOException: " + ex.getMessage());
 		}
@@ -45,13 +54,15 @@ public class DocumentTranslater {
 		
 		
 		long endTime = System.currentTimeMillis();
-		System.out.println("DONE!");
-		System.out.println("Total time used in Seconds: " + (endTime - startTime)/1000);
+		
+		return (int)(endTime - startTime)/1000;
+		//System.out.println("DONE!");
+		//System.out.println("Total time used in Seconds: " + (endTime - startTime)/1000);
 	}
 	
 	//if a folder name is entered, this function will help iterate through all the word documents in the folder.
-	public static void ProcessDir (String fn) throws IOException {
-		File folder = new File("/Users/Fenggq/Desktop/" + fn);
+	private void ProcessDir (String fn) throws IOException {
+		File folder = new File(fn);
 		if (!folder.exists()) {
 			System.err.println("folder does not exist");
 			return;
@@ -67,17 +78,17 @@ public class DocumentTranslater {
 				ProcessDocx(fn + "/" + fName);
 			else
 				System.out.println("This file format is currently unsupported");
-			System.out.println("File Number: " + (++fileNum) + " finished out of " + folder.listFiles().length);
+			//System.out.println("File Number: " + (++fileNum) + " finished out of " + folder.listFiles().length);
 		}	
 	}
 	//read the text from .doc file type
-	public static void ProcessDoc (String fn) throws IOException {
+	private void ProcessDoc (String fn) throws IOException {
 		FileInputStream fis = null;
 		HWPFDocument document = null;
 		WordExtractor extractor = null;
 		FileOutputStream out = null;
 		try {
-			fis = new FileInputStream("/Users/Fenggq/Desktop/" + fn);
+			fis = new FileInputStream(fn);
 			document = new HWPFDocument(fis);
 			extractor = new WordExtractor(document);
 		   
@@ -87,7 +98,7 @@ public class DocumentTranslater {
 			//write to new doc
 			String resText = transAPI(fileData,0);
 			document.getRange().replaceText(resText, true);
-			out = new FileOutputStream("/Users/Fenggq/Desktop/" + fn);
+			out = new FileOutputStream(fn);
 			document.write(out);
 		   
 		} catch(Exception ex) {
@@ -105,13 +116,13 @@ public class DocumentTranslater {
 	}
 	
 	//read text from .docx file type
-	public static void ProcessDocx (String fn) throws IOException {
+	private void ProcessDocx (String fn) throws IOException {
 		FileInputStream fis = null;
 		XWPFDocument documentI = null;
 		XWPFDocument documentO = null;
 		FileOutputStream out = null;
 		try {
-			fis = new FileInputStream("/Users/Fenggq/Desktop/" + fn);
+			fis = new FileInputStream(fn);
 			documentI = new XWPFDocument(fis);
 		    
 			//get original text
@@ -146,7 +157,7 @@ public class DocumentTranslater {
 					runO.setFontSize(runTemp.getFontSize());
 				}
 			}
-			out = new FileOutputStream("/Users/Fenggq/Desktop/" + fn);
+			out = new FileOutputStream(fn);
 			documentO.write(out);
 		   
 		} catch(Exception ex) {
@@ -164,7 +175,7 @@ public class DocumentTranslater {
 	}
 	
 	//call google cloud api to translate all the text, and return translation. 
-	public static String transAPI(String[] oStr, int type) throws Exception{
+	private String transAPI(String[] oStr, int type) throws Exception{
 		StringBuilder accur = new StringBuilder();
 		
 		// Instantiates a client
@@ -199,7 +210,7 @@ public class DocumentTranslater {
 				accur.append(result+ "@");
 			}
 			
-			System.out.println((i + 1) + " / " + oStr.length);
+			//System.out.println((i + 1) + " / " + oStr.length);
 		}
 		
 		return accur.toString();
