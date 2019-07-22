@@ -1,5 +1,7 @@
 package com.georgefeng.trans.doc_trans;
 
+//NOT USING IT IN MAIN PROGRAM ANYMORE
+//SAME FUNCTION IS INTEGRETED IN DTDriver
 import com.google.cloud.translate.Translate;
 import com.google.cloud.translate.TranslateOptions;
 import com.google.cloud.translate.Translation;
@@ -46,6 +48,12 @@ public class Translator {
 		            TranslateOption.targetLanguage("en"));
 			
 			result[i] = translation.getTranslatedText();
+			
+			//calculate progress
+			if (i % 10 == 0 || i == oStr.length - 1) {
+				int progV = (i / (oStr.length - 1)) * 100;
+				//pb.setValue(progV);
+			}
 		}
 		
 		return result;
