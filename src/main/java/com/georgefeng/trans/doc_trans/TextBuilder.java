@@ -43,7 +43,7 @@ public class TextBuilder {
 		accur.append(nl);
 		
 		for (int i = 0; i < trText.length; i++) { 
-				accur.append(trText + nl);
+				accur.append(trText[i] + nl);
 		}
 		
 		return accur.toString();
@@ -54,7 +54,7 @@ public class TextBuilder {
 		StringBuilder accur = new StringBuilder();
 		String nl = convertNLS(type);
 		for (int i = 0; i < trText.length; i++) { 
-				accur.append(trText + nl);
+				accur.append(trText[i] + nl);
 		}
 		
 		return accur.toString();

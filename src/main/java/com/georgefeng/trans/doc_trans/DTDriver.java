@@ -1,11 +1,15 @@
 package com.georgefeng.trans.doc_trans;
 
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.SwingWorker;
 
 import com.google.cloud.translate.Translate;
@@ -14,7 +18,7 @@ import com.google.cloud.translate.Translation;
 import com.google.cloud.translate.Translate.TranslateOption;
 
 
-public class DTDriver extends SwingWorker<Void, Void> {
+public class DTDriver extends SwingWorker<Void, Integer> {
 	private DocProcessor dp;
 	private DocWriter dw;;
 	private TextBuilder tb;
@@ -28,6 +32,8 @@ public class DTDriver extends SwingWorker<Void, Void> {
 	private JPanel jp;
 	private JLabel jl;
 	private int tt;
+	private JProgressBar fprobar;
+	private JLabel warning;
 	
 	
 	//Constructor
@@ -43,18 +49,16 @@ public class DTDriver extends SwingWorker<Void, Void> {
 	@Override
     public Void doInBackground() {
 		long startTime = System.currentTimeMillis();
-		int docType = 0;
 		setProgress(0);
 		
 		try {
 			if (fpIn.substring(fpIn.length()-3).equals("doc"))
-				docType = 0;
+				docTrans(fpIn, fpOut, mode, 0);
 			else if(fpIn.substring(fpIn.length()-4).equals("docx"))
-				docType = 1;
+				docTrans(fpIn, fpOut, mode, 1);
 			else
-				ProcessDir();
+				ProcessDir(mode);
 			
-			docTrans(fpIn, fpOut, mode, docType);
 			
 		} catch (IOException ex) {
 			System.err.println("Caught IOException: " + ex.getMessage());
@@ -68,6 +72,14 @@ public class DTDriver extends SwingWorker<Void, Void> {
 		return null;
     }
 	
+	//updating the folder progress
+	 @Override
+     protected void process(List<Integer> chunks) {
+         // Get Info
+         for (int number : chunks) {
+             fprobar.setValue(number);
+         }
+     }
 	
 	//perform after this thread is finished
 	@Override
@@ -94,10 +106,18 @@ public class DTDriver extends SwingWorker<Void, Void> {
 		jl = JL;
 	}
 	
+	//get the progressbar component from frame1
+	public void setFolderProgressBar(JProgressBar fpb) {
+		fprobar = fpb;
+	}
+	
+	//get warning label from frame1
+	public void setTextwarning(JLabel tw) {
+		warning = tw;
+	}
 	
 	//if a folder name is entered, this function will help iterate through all the word documents in the folder.
-	//HAVE NOT CREATE GUI FOR THIS FUNCTION YET
-	private void ProcessDir () throws IOException {
+	private void ProcessDir (int m) throws IOException {
 		File folder = new File(fpIn);
 		
 		if (!folder.exists()) {
@@ -105,17 +125,23 @@ public class DTDriver extends SwingWorker<Void, Void> {
 			return;
 		}
 		
-		//int fileNum = 0;
+		double fileNum = 1;
+		int unsprtFile = 0; 
 		
 		for (File fileEntry: folder.listFiles()) {
 			String fName = fileEntry.getName();
 			if (fName.substring(fName.length()-3).equals("doc"))
-				docTrans(fpIn + "/" + fName, fpIn + "/" + fName, 1, 0);
+				docTrans(fpIn + "/" + fName, fpIn + "/" + fName, m, 0);
 			else if(fName.substring(fName.length()-4).equals("docx"))
-				docTrans(fpIn + "/" + fName, fpIn + "/" + fName, 1, 1);
+				docTrans(fpIn + "/" + fName, fpIn + "/" + fName, m, 1);
 			else
-				System.out.println("This file format is currently unsupported");
+				unsprtFile++;
+				warning.setText(unsprtFile + " file is skipped! Their format is currently unsupported");
+			
 			//System.out.println("File Number: " + (++fileNum) + " finished out of " + folder.listFiles().length);
+			setProgress(0);
+			publish((int)((fileNum/folder.listFiles().length)*100));
+			fileNum++;
 		}	
 	}
 	
