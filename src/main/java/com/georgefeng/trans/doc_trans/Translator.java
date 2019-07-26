@@ -48,12 +48,6 @@ public class Translator {
 		            TranslateOption.targetLanguage("en"));
 			
 			result[i] = translation.getTranslatedText();
-			
-			//calculate progress
-			if (i % 10 == 0 || i == oStr.length - 1) {
-				int progV = (i / (oStr.length - 1)) * 100;
-				//pb.setValue(progV);
-			}
 		}
 		
 		return result;

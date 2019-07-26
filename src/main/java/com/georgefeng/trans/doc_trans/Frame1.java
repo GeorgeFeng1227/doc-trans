@@ -7,29 +7,30 @@ import javax.swing.JButton;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 
+import com.google.cloud.translate.TranslateException;
+
 import javax.swing.JLabel;
-import javax.swing.AbstractAction;
 import javax.swing.JFileChooser;
 import java.awt.event.ActionEvent;
-import javax.swing.Action;
 import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.util.concurrent.ExecutionException;
-
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import javax.swing.JComboBox;
 import javax.swing.JCheckBox;
 import javax.swing.DefaultComboBoxModel;
 import java.awt.Font;
 import javax.swing.JPanel;
 import javax.swing.JLayeredPane;
+import javax.swing.JOptionPane;
+
 import java.awt.CardLayout;
-import net.miginfocom.swing.MigLayout;
-import javax.swing.GroupLayout;
-import javax.swing.GroupLayout.Alignment;
-import java.awt.GridLayout;
+
 import javax.swing.JProgressBar;
 import java.awt.Color;
 
@@ -42,9 +43,10 @@ public class Frame1 {
 	private JFileChooser fcf;
 	private JTextField txtEOF;
 	private JTextField txtEIF;
-	private JComboBox cbMode;
+	private JComboBox<String> cbMode;
 	private JCheckBox chckbxROF;
 	private JLabel lblwarning;
+	private JComboBox<String> cbLan;
 	private JLayeredPane layeredPane;
 	private JPanel panelDO;
 	private JPanel panelTrans;
@@ -56,29 +58,94 @@ public class Frame1 {
 	private JPanel panelFolder;
 	private JLabel lblWF;
 	private JTextField txtEIFF;
-	private JComboBox cbModeF;
+	private JComboBox<String> cbModeF;
 	private JProgressBar progressBarFF;
 	public JProgressBar progressBarF;
-	
-	//Variables Initialization
-	private String fnIN; 
-	private String fnOUT;
-	private int mode;
+	private JComboBox<String> cbLanF;
 	private JPanel panelTransF;
 	private JLabel lblTransSign;
 	private JButton btnHome_1;
 	private JButton btnHome_2;
 	private JLabel lblwarningTF;
+	
+	//Variables Initialization
+	private String fnIN; 
+	private String fnOUT;
+	private int mode;
+	private String lan;
+	private static String[] lanNames;
+	private static String pkpath;
 
 	/**
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		try {
-			EnvSetup.updateEnv("GOOGLE_APPLICATION_CREDENTIALS", "/Users/Fenggq/Desktop/NL Translation-c9bcb0c1474a.json");
-		} catch (ReflectiveOperationException e1) {
-			e1.printStackTrace();
+		//setup the environment variable 
+		File envFile = new File("EnvVa.ser");
+		EnvVariable ev;
+		boolean pkFound = false;
+		
+		if (envFile.exists()) {
+	
+			try {
+				//deserialize environment variable objects
+				FileInputStream evfis = new FileInputStream("EnvVa.ser");
+				ObjectInputStream evois = new ObjectInputStream(evfis);
+			     
+			    ev = (EnvVariable)evois.readObject();
+			      
+			    evois.close();
+			    evfis.close();
+			} catch(IOException ioe) {
+			    ioe.printStackTrace();
+			    return;
+			} catch(ClassNotFoundException cnfe) {
+			    cnfe.printStackTrace();
+			    return;
+			}
+			
+			pkpath = ev.getValue();
+		} else {
+			//getting private key path from user
+			 pkpath = (String)JOptionPane.showInputDialog(
+	                new JFrame(),
+	                "Please enter the correct full path to\n" +
+	                "the Google Cloud API private key json file\n",
+	                "Update Private Key Path",
+	                JOptionPane.PLAIN_MESSAGE);
 		}
+		
+		//if it failed to access google API, it will continue ask user to enter the correctPath
+		//The user can try at most 5 times
+		while (!pkFound) {
+			//setup environment
+			try {
+				EnvSetup.updateEnv("GOOGLE_APPLICATION_CREDENTIALS", pkpath);
+			} catch (ReflectiveOperationException e1) {
+				e1.getStackTrace();
+			}
+			
+			//get available languages and check if private key for access google api is present
+			try {
+				lanNames = LanManage.getLanNames();
+			} catch (TranslateException e) {
+				pkpath = (String)JOptionPane.showInputDialog(
+		                new JFrame(),
+		                "Please enter the correct full path to\n" +
+		                "the Google Cloud API private key json file\n",
+		                "Update Private Key Path",
+		                JOptionPane.PLAIN_MESSAGE);
+				
+			}
+			
+			//check if its successful
+			if (lanNames != null) {
+				pkFound = true;
+			}
+		}
+		
+		
+		//initialize the window
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
@@ -89,6 +156,7 @@ public class Frame1 {
 				}
 			}
 		});
+				
 	}
 
 	/**
@@ -108,6 +176,7 @@ public class Frame1 {
 		frmDocumentTranslator.setBounds(100, 100, 450, 300);
 		frmDocumentTranslator.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmDocumentTranslator.getContentPane().setLayout(null);
+		
 		
 		//file chooser for Document Only
 		fc = new JFileChooser();
@@ -178,13 +247,13 @@ public class Frame1 {
 		txtEOF.setColumns(10);
 		
 		//the combo box for choosing different writing mode
-		cbMode = new JComboBox();
-		cbMode.setBounds(167, 181, 175, 27);
+		cbMode = new JComboBox<String>();
+		cbMode.setBounds(273, 182, 158, 27);
 		panelDO.add(cbMode);
-		cbMode.setModel(new DefaultComboBoxModel(new String[] {"Alternating between Translated Text and Orignial Text Paragraph by Paragraph", "Put Translated Text After Orignal Text", "Keep only Translated Text"}));
+		cbMode.setModel(new DefaultComboBoxModel<String>(new String[] {"Alternating between Translated Text and Orignial Text Paragraph by Paragraph", "Put Translated Text After Orignal Text", "Keep only Translated Text"}));
 		
 		JLabel lblMode = new JLabel("Mode");
-		lblMode.setBounds(125, 186, 45, 16);
+		lblMode.setBounds(236, 186, 42, 16);
 		panelDO.add(lblMode);
 		
 		//warning text
@@ -203,6 +272,16 @@ public class Frame1 {
 		btnHome_1 = new JButton("Home");
 		btnHome_1.setBounds(327, 1, 117, 29);
 		panelDO.add(btnHome_1);
+		
+		//combo box for choosing output language
+		cbLan = new JComboBox<String>();
+		cbLan.setBounds(110, 182, 114, 27);
+		cbLan.setModel(new DefaultComboBoxModel<String>(lanNames));
+		panelDO.add(cbLan);
+		
+		JLabel lblTT = new JLabel("Translate to");
+		lblTT.setBounds(32, 186, 80, 16);
+		panelDO.add(lblTT);
 		
 		
 		//Translating Panel Components
@@ -263,13 +342,13 @@ public class Frame1 {
 		panelFolder.add(txtEIFF);
 		
 		//Mode choosing combo box
-		cbModeF = new JComboBox();
-		cbModeF.setBounds(167, 181, 175, 27);
-		cbModeF.setModel(new DefaultComboBoxModel(new String[] {"Alternating between Translated Text and Orignial Text Paragraph by Paragraph", "Put Translated Text After Orignal Text", "Keep only Translated Text"}));
+		cbModeF = new JComboBox<String>();
+		cbModeF.setBounds(273, 182, 158, 27);
+		cbModeF.setModel(new DefaultComboBoxModel<String>(new String[] {"Alternating between Translated Text and Orignial Text Paragraph by Paragraph", "Put Translated Text After Orignal Text", "Keep only Translated Text"}));
 		panelFolder.add(cbModeF);
 		
 		JLabel lblModeF = new JLabel("Mode");
-		lblModeF.setBounds(125, 186, 45, 16);
+		lblModeF.setBounds(236, 186, 44, 16);
 		panelFolder.add(lblModeF);
 		
 		//warning
@@ -295,7 +374,17 @@ public class Frame1 {
 		btnHome_2.setBounds(327, 1, 117, 29);
 		panelFolder.add(btnHome_2);
 		
-		//Folder Tranlating Panel
+		JLabel lblTTF = new JLabel("Translate to");
+		lblTTF.setBounds(26, 186, 80, 16);
+		panelFolder.add(lblTTF);
+		
+		//Combo box for choosing output language
+		cbLanF = new JComboBox<String>();
+		cbLanF.setBounds(110, 182, 114, 27);
+		cbLanF.setModel(new DefaultComboBoxModel<String>(lanNames));
+		panelFolder.add(cbLanF);
+		
+		//Folder Translating Panel
 		panelTransF = new JPanel();
 		layeredPane.add(panelTransF, "name_875151038858936");
 		panelTransF.setLayout(null);
@@ -375,13 +464,14 @@ public class Frame1 {
 		btnST.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				mode = cbMode.getSelectedIndex() + 1;
+				lan = LanManage.getMatchCode((String)cbLan.getSelectedItem());
 				fnIN = txtEIF.getText();
 				fnOUT = txtEOF.getText();
 				if (!fnIN.equals("Enter input file path and name") && !fnOUT.equals("Enter output file path and name")) {
 					lblwarning.setText("");
 					
 					DTDriver dd = new DTDriver();
-					dd.setParameters(fnIN, fnOUT, mode);
+					dd.setParameters(fnIN, fnOUT, mode,lan);
 					dd.setComponents(layeredPane, panelEnd, lblTime);
 					dd.addPropertyChangeListener(new PropertyChangeListener() {
 						 public void propertyChange(PropertyChangeEvent evt) {
@@ -427,13 +517,14 @@ public class Frame1 {
 		buttonSTF.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				mode = cbModeF.getSelectedIndex() + 1;
+				lan = LanManage.getMatchCode((String)cbLanF.getSelectedItem());
 				fnIN = txtEIFF.getText();
 				fnOUT = fnIN;
 				if (!fnIN.equals("Enter input file path and name")) {
 					lblwarning.setText("");
 					
 					DTDriver dd = new DTDriver();
-					dd.setParameters(fnIN, fnOUT, mode);
+					dd.setParameters(fnIN, fnOUT, mode,lan);
 					dd.setComponents(layeredPane, panelEnd, lblTime);
 					dd.setFolderProgressBar(progressBarF);
 					dd.setTextwarning(lblwarningTF);
@@ -458,6 +549,7 @@ public class Frame1 {
 		//Ending panel
 		btnExit.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				serialization();
 				System.exit(0);
 			}
 		});
@@ -471,5 +563,24 @@ public class Frame1 {
 		layeredPane.add(p);
 		layeredPane.repaint();
 		layeredPane.revalidate();
-	}   
+	} 
+	
+	public void serialization() {
+		//Serialization
+				try {
+					// serialize environment variable
+					FileOutputStream evfos = new FileOutputStream("EnvVa.ser");
+					ObjectOutputStream evoos = new ObjectOutputStream(evfos);
+
+					EnvVariable ev = new EnvVariable("GOOGLE_APPLICATION_CREDENTIALS", pkpath);
+					evoos.writeObject(ev);
+					
+					evoos.close();
+					evfos.close();
+					
+				} 
+				catch (IOException ioe) {
+					ioe.printStackTrace();
+				}
+	}
 }

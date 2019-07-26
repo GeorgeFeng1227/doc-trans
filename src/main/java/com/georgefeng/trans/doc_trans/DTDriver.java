@@ -1,17 +1,20 @@
 package com.georgefeng.trans.doc_trans;
 
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.SwingWorker;
 
+import com.google.cloud.translate.Detection;
 import com.google.cloud.translate.Translate;
 import com.google.cloud.translate.TranslateOptions;
 import com.google.cloud.translate.Translation;
@@ -26,6 +29,7 @@ public class DTDriver extends SwingWorker<Void, Integer> {
 	private String fpIn;
 	private String fpOut;
 	private int mode;
+	private String lan;
 	
 	private int prog;
 	private JLayeredPane jlp;
@@ -93,10 +97,11 @@ public class DTDriver extends SwingWorker<Void, Integer> {
 	
 	
 	//Set necessary parameters
-	public void setParameters(String fpi, String fpo, int m) {
+	public void setParameters(String fpi, String fpo, int m, String l) {
 		fpIn = fpi;
 		fpOut = fpo;
 		mode = m;
+		lan = l;
 	}
 	
 	//get necessary swing components from frame1
@@ -156,35 +161,23 @@ public class DTDriver extends SwingWorker<Void, Integer> {
 			case 0:
 				oText = dp.processDoc(fpi);
 				setProgress(5);
-				//test
-				//System.out.println(getProgress());
-				
 				tText = transAPI(oText);
 				tb.setOrText(oText);
 				tb.setTrText(tText);
 				bText = textBuilding(m,type);
 				dw.writeDoc(bText, fpo);
 				setProgress(100);
-				//test
-				//System.out.println(getProgress());
-				
 				break;
 			
 			case 1:
 				oText = dp.processDocx(fpi);
 				setProgress(5);
-				//test
-				//System.out.println(getProgress());
-				
 				tText = transAPI(oText);
 				tb.setOrText(oText);
 				tb.setTrText(tText);
 				bText = textBuilding(m, type);
 				dw.writeDocx(bText, fpi, fpo);
 				setProgress(100);
-				//test
-				//System.out.println(getProgress());
-				
 				break;
 
 		}
@@ -227,10 +220,48 @@ public class DTDriver extends SwingWorker<Void, Integer> {
 	    // The text to translate
 	    String text;
 
-	    // Translates text into English
 	    Translation translation;
+	  		
+	    //auto detect input language
+	    List<Detection> detections = new LinkedList<Detection>();
 	    
-	  
+	    //Choose detection input array length
+	    int detectLen = 10;
+	    if (oStr.length < 10) {
+	    	detectLen = oStr.length;
+	    }
+	    
+	    //make detection
+	    try {
+	    	detections = translate.detect(Arrays.copyOf(oStr, detectLen));
+	    } catch(Exception e) {
+	    	e.printStackTrace();
+	    }
+	    String inputLan = "";
+	    
+	    
+  		//choose Language
+	    for (Detection d : detections) {
+	    	if ((double) d.getConfidence() > 0.8) {
+	    		inputLan = d.getLanguage();
+	    	}
+	    }
+	    
+	    //if detection failed
+	    if (inputLan.equals("")) {
+	    	String[] pLan = LanManage.getLanNames();
+	    	lan = (String)JOptionPane.showInputDialog(
+	                new JFrame(),
+	                "Failed to automatically detect input language\n" +
+	                "Please choose one of the following: \n",
+	                "Choose Input File Language",
+	                JOptionPane.PLAIN_MESSAGE,
+	                null, pLan,
+	                pLan[0]);
+	    	lan = LanManage.getMatchCode(lan);
+	    }
+
+	    //start translating
 		for (int i = 0; i < arrLen; i++) {
 			if (oStr[i] == null || oStr[i].trim().equals(""))
 				continue;
@@ -238,8 +269,8 @@ public class DTDriver extends SwingWorker<Void, Integer> {
 			text = oStr[i];
 			translation = translate.translate(
 		            text,
-		            TranslateOption.sourceLanguage("zh-CN"),
-		            TranslateOption.targetLanguage("en"));
+		            TranslateOption.sourceLanguage(inputLan),
+		            TranslateOption.targetLanguage(lan));
 			
 			result[i] = translation.getTranslatedText();
 			
@@ -249,8 +280,6 @@ public class DTDriver extends SwingWorker<Void, Integer> {
 			
 			setProgress(prog + 5);
 			
-			//test
-			//System.out.println(getProgress());
 		}
 		
 		return result;

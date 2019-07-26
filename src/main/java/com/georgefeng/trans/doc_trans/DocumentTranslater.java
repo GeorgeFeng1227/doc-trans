@@ -5,7 +5,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
-import java.util.Scanner;
+//import java.util.Scanner;
 
 import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.extractor.WordExtractor;
@@ -78,7 +78,7 @@ public class DocumentTranslater {
 				ProcessDocx(fn + "/" + fName);
 			else
 				System.out.println("This file format is currently unsupported");
-			//System.out.println("File Number: " + (++fileNum) + " finished out of " + folder.listFiles().length);
+			System.out.println("File Number: " + (++fileNum) + " finished out of " + folder.listFiles().length);
 		}	
 	}
 	//read the text from .doc file type
